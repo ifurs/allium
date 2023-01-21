@@ -55,7 +55,8 @@ if __name__ == "__main__":
         type=str,
         default=[],
         nargs="+",
-        help="In order format, e.g: entry middle exit (default " "None)",
+        help="Generates lists of specified node types. In order format, e.g: entry middle exit (default "
+        "None)",
         required=False,
     )
     args = parser.parse_args()
