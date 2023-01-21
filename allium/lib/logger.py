@@ -1,8 +1,9 @@
+# TODO: define debugger
 import logging
 
 
 logging.basicConfig(
-    filename="debug.log",
+    filename="allium.log",
     filemode="a",
     format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
     datefmt="%H:%M:%S",
@@ -16,4 +17,4 @@ console_handler.setLevel(logging.INFO)
 logger = logging.getLogger("allium")
 logger.addHandler(console_handler)
 
-debugger = logging.getLogger("allium-debug")
+# debugger = logging.getLogger("allium-debug")

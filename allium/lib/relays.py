@@ -11,9 +11,9 @@ import os
 import re
 import time
 import urllib.request
-from shutil import rmtree
+
 from jinja2 import Environment, FileSystemLoader
-from lib.logger import logger, debugger
+from lib.logger import logger
 
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 ENV = Environment(
@@ -28,12 +28,13 @@ class Relays:
     Relay class consisting of processing routines and onionoo data
     """
 
-    def __init__(self, output_dir, onionoo_url):
-        self.output_dir = output_dir
+    def __init__(self, onionoo_url, generate_nodes, bandwidth_threshold):
         self.onionoo_url = onionoo_url
+        self.generate_nodes = generate_nodes
+        self.bandwidth_threshold = bandwidth_threshold
         self.ts_file = os.path.join(os.path.dirname(ABS_PATH), "timestamp")
         self.json = self._fetch_onionoo_details()
-        if self.json == None:
+        if self.json is None:
             return
         self.timestamp = self._write_timestamp()
 
@@ -62,10 +63,10 @@ class Relays:
             api_response = urllib.request.urlopen(conn).read()
         except urllib.error.HTTPError as err:
             if err.code == 304:
-                print("no onionoo update since last run, dying peacefully...")
+                logger.info("no onionoo update since last run, dying peacefully...")
                 return
             else:
-                raise (err)
+                raise err
         # for debug
         # with open("test.json", 'w', encoding='utf8') as json_file:
         #     json_file.write(json.dumps(json.loads(api_response.decode('utf-8'))))
@@ -112,19 +113,38 @@ class Relays:
         during subsequent sorting (country, AS, etc)
         """
         self.json["relays"].sort(key=lambda x: x["observed_bandwidth"], reverse=True)
-        with open("relays.json", "w", encoding="utf8") as relays_file:
-            relays_file.write(json.dumps(self.json["relays"]))
+        # DEBUG:
+        # with open("relays.json", "w", encoding="utf8") as relays_file:
+        #     relays_file.write(json.dumps(self.json["relays"]))
 
     def _filter_by_bandwidth(self):
-        self.json["relays"] = list(
-            filter(lambda x: x["observed_bandwidth"] >= 12583680, self.json["relays"])
-        )
+        if self.generate_nodes:
+            self.json["relays"] = list(
+                filter(
+                    lambda x: x["observed_bandwidth"] >= self.bandwidth_threshold,
+                    self.json["relays"],
+                )
+            )
+            logger.info(
+                f"Node bandwidth > {self.bandwidth_threshold * 0.000008} MBit/s"
+            )
+        else:
+            self.json["relays"] = list(
+                filter(
+                    lambda x: x["observed_bandwidth"] <= self.bandwidth_threshold,
+                    self.json["relays"],
+                )
+            )
+            logger.info(
+                f"Node bandwidth < {self.bandwidth_threshold * 0.000008} MBit/s"
+            )
 
     def _filter_running_nodes(self):
         self.json["relays"] = list(filter(lambda x: x["running"], self.json["relays"]))
 
-        with open("relays2.json", "w", encoding="utf8") as relays2_file:
-            relays2_file.write(json.dumps(self.json["relays"]))
+        # DEBUG:
+        # with open("relays2.json", "w", encoding="utf8") as relays2_file:
+        #     relays2_file.write(json.dumps(self.json["relays"]))
 
     def _write_timestamp(self):
         """
@@ -153,10 +173,10 @@ class Relays:
         if not v or not re.match(r"^[A-Za-z0-9_-]+$", v):
             return
 
-        if not k in self.json["sorted"]:
+        if k not in self.json["sorted"]:
             self.json["sorted"][k] = dict()
 
-        if not v in self.json["sorted"][k]:
+        if v not in self.json["sorted"][k]:
             self.json["sorted"][k][v] = {
                 "relays": list(),
                 "bandwidth": 0,
@@ -216,15 +236,26 @@ class Relays:
             self._sort(relay, idx, "contact", c_hash)
 
     def all_list(self):
-        logger.info(f"all: {len(self.json['relays'])}")
+        logger.info(f"All filtered nodes: {len(self.json['relays'])}")
         return self.json["relays"]
 
     def exit_nodes(self):
-        return [x for x in self.json["relays"] if "Exit" in x["flags"]]
+        if "exit" in self.generate_nodes:
+            return [x for x in self.json["relays"] if "Exit" in x["flags"]]
+        return []
 
     def middle_nodes(self):
-        return [x for x in self.json["relays"] if "Exit" not in x["flags"]]
+        if "middle" in self.generate_nodes:
+            return [x for x in self.json["relays"] if "Exit" not in x["flags"]]
+        return []
 
     def entry_nodes(self):
-        guardy = [x for x in self.json["relays"] if "Exit" not in x["flags"]]
-        return [x for x in guardy if "Guard" in x["flags"]]
+        if "entry" in self.generate_nodes:
+            guardy = [x for x in self.json["relays"] if "Exit" not in x["flags"]]
+            return [x for x in guardy if "Guard" in x["flags"]]
+        return []
+
+    def exclude_nodes(self):
+        if not self.generate_nodes:
+            return self.json["relays"]
+        return []

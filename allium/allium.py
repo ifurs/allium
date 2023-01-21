@@ -1,15 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """
 File: allium.py (executable)
 
-Generate complete set of relay HTML pages and copy static files to the
-output_dir
-
-Default output directory: ./www
 """
 
 import argparse
+import json
 import os
 import pkg_resources
 import sys
@@ -26,23 +23,16 @@ if jinja_version < pkg_resources.parse_version("2.11.2"):
 
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 
-environment = Environment(loader=FileSystemLoader("parsed/"))
+environment = Environment(loader=FileSystemLoader("templates/"))
 
 results_filename = "torrc"
+relays_json = "relays.json"
 results_template = environment.get_template("torrc.j2")
 
 
 if __name__ == "__main__":
-    desc = "allium: generate static tor relay metrics and statistics"
+    desc = "allium: generate node lists and torrc file by requirements, default generation of excluded nodes"
     parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument(
-        "--out",
-        dest="output_dir",
-        type=str,
-        default="./www",
-        help='directory to store rendered files (default "./www")',
-        required=False,
-    )
     parser.add_argument(
         "--onionoo-url",
         dest="onionoo_url",
@@ -51,19 +41,39 @@ if __name__ == "__main__":
         help="onionoo HTTP URL (default " '"https://onionoo.torproject.org/details")',
         required=False,
     )
+    parser.add_argument(
+        "--filter-by-bandwidth",
+        dest="bandwidth_threshold",
+        type=int,
+        default=12500000,
+        help="Define bandwidth threshold in bytes (default " "12500000)",
+        required=False,
+    )
+    parser.add_argument(
+        "--generate-nodes",
+        dest="generate_nodes",
+        type=str,
+        default=[],
+        nargs="+",
+        help="In order format, e.g: entry middle exit (default " "None)",
+        required=False,
+    )
     args = parser.parse_args()
 
     # object containing onionoo data and processing routines
-    RELAY_SET = Relays(args.output_dir, args.onionoo_url)
+    RELAY_SET = Relays(args.onionoo_url, args.generate_nodes, args.bandwidth_threshold)
     if RELAY_SET.json is None:
         sys.exit(0)
 
-    RELAY_SET.all_list()
+    with open(relays_json, mode="w", encoding="utf-8") as results:
+        results.write(json.dumps(RELAY_SET.all_list()))
+        logger.info(f"... wrote {relays_json} file")
 
     relays = {
         "exit_nodes": RELAY_SET.exit_nodes(),
         "middle_nodes": RELAY_SET.middle_nodes(),
         "entry_nodes": RELAY_SET.entry_nodes(),
+        "exclude_nodes": RELAY_SET.exclude_nodes(),
     }
 
     with open(results_filename, mode="w", encoding="utf-8") as results:

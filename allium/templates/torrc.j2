@@ -1,10 +1,21 @@
+{% if (exit_nodes is defined) and exit_nodes -%}
 # exit
-ExitNodes {% for relay in exit_nodes -%} {{ relay["fingerprint"] }} {% endfor %}
+ExitNodes {% for relay in exit_nodes -%} {{ relay["fingerprint"] }},{% if loop.last %} {{ relay["fingerprint"] }} {% endif %} {% endfor %}
+{% endif -%}
 
+{% if (middle_nodes is defined) and middle_nodes -%}
 # middle ???
-MiddleNodes {% for relay in middle_nodes -%} {{ relay["fingerprint"] }} {% endfor %}
+MiddleNodes {% for relay in middle_nodes -%} {{ relay["fingerprint"] }},{% if loop.last %} {{ relay["fingerprint"] }} {% endif %} {% endfor %}
+{% endif -%}
 
+{% if (entry_nodes is defined) and entry_nodes -%}
 # guard/entry
-EntryNodes {% for relay in entry_nodes -%} {{ relay["fingerprint"] }} {% endfor %}
+EntryNodes {% for relay in entry_nodes -%} {{ relay["fingerprint"] }},{% if loop.last %} {{ relay["fingerprint"] }} {% endif %} {% endfor %}
+{% endif -%}
 
+{% if (exclude_nodes is defined) and exclude_nodes -%}
+# excluded nodes
+ExcludeNodes {% for relay in exclude_nodes -%} {{ relay["fingerprint"] }},{% if loop.last %} {{ relay["fingerprint"] }} {% endif %} {% endfor %}
+{% endif %}
 # other config ...
+# static config paste under this
