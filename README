@@ -1,22 +1,20 @@
 allium: generate static tor relay metrics and statistics
 
-usage: allium.py [-h] [--out] [--onionoo-url]
+usage: allium.py [-h] [--onionoo-url] [--filter-by-bandwidth] [--generate-nodes]
 
 optional arguments:
-  -h, --help     show this help message and exit
-  --out          directory to store rendered files (default "./www")
-  --onionoo-url  onionoo HTTP URL (default
-                 "https://onionoo.torproject.org/details")
+  -h, --help             show this help message and exit
+  --onionoo-url          onionoo HTTP URL (default "https://onionoo.torproject.org/details")
+  --filter-by-bandwidth  Define bandwidth threshold in bytes (default " "12500000)
+  --generate-nodes       Generates lists of specified node types. In order format, e.g: entry middle exit (default " "None)
+
+outputs:
+- torrc       - file with speciied nodes or exluded nodes
+- relays.json - file with all relays that passed filter with all parametres (in json format) 
 
 ABOUT
 
-  allium generates a set of HTML documents which represent the total set of tor
-  relays at the time of execution
-
-  allium is heavily inspired by the official tor metrics project[0] and serves
-  as a javascript-free, statically-generated clean room implementation. the
-  primary goals of the project are to be fast (static), use few API queries
-  (one), and to present information in a condensed, readable format
+  allium generates a set of relays 
 
 REQUIRES
 
